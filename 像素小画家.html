@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎨 像素小画家</title>
+<style>
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body{
+    margin:0; min-height:100vh;
+    font-family:"Comic Sans MS","Chalkboard SE","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:linear-gradient(160deg,#FFF1F7 0%,#EAF6FF 35%,#EEFFF2 65%,#FFF9E6 100%);
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 14px 40px; overflow-x:hidden; color:#3F4B63;
+  }
+
+  /* ---------- 背景装饰 ---------- */
+  .blob{position:fixed;border-radius:50%;filter:blur(50px);opacity:.5;z-index:-1;pointer-events:none;}
+  .b1{width:260px;height:260px;background:#FFC9E5;top:-70px;left:-70px;animation:drift 14s ease-in-out infinite;}
+  .b2{width:230px;height:230px;background:#BFE4FF;top:18%;right:-80px;animation:drift 18s ease-in-out infinite reverse;}
+  .b3{width:250px;height:250px;background:#C8F7D4;bottom:-90px;left:8%;animation:drift 16s ease-in-out infinite;}
+  .b4{width:200px;height:200px;background:#FFE9B0;bottom:12%;right:2%;animation:drift 20s ease-in-out infinite reverse;}
+  @keyframes drift{
+    0%,100%{ transform:translate(0,0) scale(1); }
+    50%{ transform:translate(22px,-32px) scale(1.08); }
+  }
+
+  /* ---------- 标题 ---------- */
+  .title{
+    font-size:clamp(26px,6.5vw,44px); font-weight:900; letter-spacing:2px;
+    margin:6px 0 6px; text-align:center;
+    background:linear-gradient(90deg,#FF6B9D,#FFB84D,#4ECD82,#48B0FF,#A55EEA,#FF6B9D);
+    background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:rainbow 7s linear infinite;
+    filter:drop-shadow(0 3px 0 rgba(255,255,255,.9));
+  }
+  @keyframes rainbow{ to{ background-position:300% 0; } }
+
+  .subtitle{ margin:0 0 20px; font-size:15px; color:#8A9AB5; text-align:center; }
+
+  /* ---------- 开始卡片 ---------- */
+  .card{
+    width:100%; max-width:560px;
+    background:rgba(255,255,255,.86);
+    border:3px solid #fff; border-radius:30px;
+    padding:22px 20px 26px;
+    box-shadow:0 10px 0 rgba(186,206,236,.35), 0 20px 44px rgba(120,150,200,.18);
+    backdrop-filter:blur(6px);
+    animation:pop .4s cubic-bezier(.3,1.4,.6,1);
+  }
+  @keyframes pop{ from{ transform:scale(.94); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+  .card h2{
+    margin:0 0 16px; font-size:17px; text-align:center; color:#5B6B88; letter-spacing:1px;
+  }
+
+  .size-list{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  @media (max-width:430px){ .size-list{ grid-template-columns:repeat(2,1fr); gap:11px; } }
+
+  .size-btn{
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    padding:14px 8px 12px; cursor:pointer;
+    font-family:inherit; font-weight:800; font-size:15px; color:#4A5A78;
+    border:3px solid #EAF2FF; border-radius:22px;
+    background:linear-gradient(180deg,#fff,#F3F8FF);
+    box-shadow:0 5px 0 #E2ECFB;
+    transition:transform .16s, box-shadow .16s, border-color .16s;
+  }
+  .size-btn:hover{ transform:translateY(-4px) rotate(-1.5deg); border-color:#BFDCFF; box-shadow:0 10px 0 #DCEBFF; }
+  .size-btn:active{ transform:translateY(1px) scale(.97); box-shadow:0 2px 0 #DCEBFF; }
+
+  .mini{
+    width:44px; height:44px; border-radius:11px;
+    border:2px solid #A7CDFF; background-color:#fff;
+    background-image:
+      linear-gradient(#D6E8FF 1px, transparent 1px),
+      linear-gradient(90deg, #D6E8FF 1px, transparent 1px);
+  }
+
+  /* ---------- 开始界面：二进制入口 ---------- */
+  .divider{
+    display:flex; align-items:center; gap:12px;
+    margin:20px 0 14px;
+    color:#A8B6CC; font-size:13px; font-weight:800; letter-spacing:.5px;
+  }
+  .divider::before, .divider::after{
+    content:''; flex:1; height:2px; border-radius:2px;
+    background:linear-gradient(90deg,transparent,#E3ECFA,transparent);
+  }
+
+  .pattern-list{
+    display:grid; gap:12px;
+    grid-template-columns:repeat(auto-fit, minmax(105px, 1fr));
+  }
+
+  .pattern-card{
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    padding:13px 8px 12px; cursor:pointer;
+    font-family:inherit;
+    border:3px dashed #FFD3E0;
+    border-radius:22px;
+    background:linear-gradient(135deg,#FFF5F9,#F5F9FF);
+    box-shadow:0 5px 0 #FFE4EE;
+    transition:transform .16s, box-shadow .16s, border-color .16s;
+  }
+  .pattern-card:hover{ transform:translateY(-4px) rotate(-1deg); border-color:#FFB8CE; box-shadow:0 10px 0 #FFE4EE; }
+  .pattern-card:active{ transform:translateY(1px) scale(.97); box-shadow:0 2px 0 #FFE4EE; }
+
+  .pattern-preview{
+    display:grid; gap:0;
+    width:52px; height:52px; padding:3px;
+    background:#fff; border-radius:10px;
+    box-shadow:0 0 0 2px #FFE1EA;
+  }
+  .pattern-preview i{ background:#F2F6FF; border-radius:1px; }
+  .pattern-preview i.on{ background:#3F4B63; }
+
+  .pattern-card strong{
+    font-size:14px; color:#4A5A78; letter-spacing:.5px;
+  }
+  .pattern-card small{
+    font-size:11.5px; color:#93A2BD; font-weight:700;
+  }
+
+  /* ---------- 游戏区 ---------- */
+  .game{ width:100%; max-width:580px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+
+  .topbar{ width:100%; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; }
+
+  .btn{
+    font-family:inherit; font-weight:800; font-size:14px;
+    padding:9px 16px; border-radius:999px; border:none; cursor:pointer;
+    transition:transform .14s, box-shadow .14s, opacity .14s;
+  }
+  .btn.ghost{ background:#fff; color:#5B6B88; border:2px solid #EAF2FF; box-shadow:0 4px 0 #E2ECFB; }
+  .btn.primary{ background:linear-gradient(180deg,#7BD4FF,#4AA8FF); color:#fff; box-shadow:0 4px 0 #2E86DB; }
+  .btn:active{ transform:translateY(3px); box-shadow:none !important; }
+  .btn:disabled{ opacity:.45; cursor:default; transform:none; box-shadow:0 4px 0 #E2ECFB; }
+
+  .badge{
+    padding:8px 16px; border-radius:999px; font-size:14px; font-weight:900;
+    color:#7A5A00; background:linear-gradient(180deg,#FFE27A,#FFC93C);
+    box-shadow:0 4px 0 #E0A800;
+  }
+  .badge.dark{
+    color:#fff; background:linear-gradient(180deg,#4B4B6B,#2D3436);
+    box-shadow:0 4px 0 #1A1E22;
+  }
+
+  .board{
+    width:min(90vw, 500px, 60vh);
+    aspect-ratio:1 / 1;
+    display:grid; gap:1px; padding:1px;
+    background:#DCE7F7;
+    border:6px solid #fff; border-radius:18px;
+    box-shadow:0 10px 0 rgba(190,210,240,.55), 0 18px 36px rgba(120,150,200,.22);
+    overflow:hidden;
+    touch-action:none; user-select:none; -webkit-user-select:none;
+    cursor:crosshair;
+    animation:pop .35s cubic-bezier(.3,1.4,.6,1);
+  }
+  .cell{ background:#fff; }
+  /* 大画板：去掉间隙，用内阴影模拟网格线 */
+  .board.dense .cell{ box-shadow: inset 0 0 0 0.5px rgba(170,195,230,.55); }
+
+  /* ---------- 二进制画板 ---------- */
+  .board.binary{
+    background:#E7EDF7;
+    gap:2px;
+    padding:2px;
+    border-color:#fff;
+    container-type: inline-size;
+  }
+  .board.binary .cell{
+    display:flex; align-items:center; justify-content:center;
+    font-family:"SF Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+    font-weight:900;
+    font-size:16px;
+    font-size:4.2cqw;
+    line-height:1;
+    background:#fff;
+    color:#C3CEDA;               /* 数字 0 的浅灰色 */
+    cursor:pointer;
+    transition:background .08s, color .08s, transform .08s;
+  }
+  .board.binary .cell.one{
+    color:#3F4B63;               /* 数字 1 的深色 */
+  }
+  .board.binary .cell.painted{
+    background:#111;             /* 涂黑后的像素块 */
+    color:transparent;           /* 隐藏数字 */
+  }
+  .board.binary .cell:active{ transform:scale(.92); }
+
+  /* ---------- 调色盘 ---------- */
+  .palette{
+    width:100%; display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
+    padding:12px 12px 16px;
+    background:rgba(255,255,255,.82);
+    border:3px solid #fff; border-radius:26px;
+    box-shadow:0 8px 0 rgba(190,210,240,.4), 0 14px 28px rgba(120,150,200,.16);
+    backdrop-filter:blur(6px);
+  }
+
+  .palette-tip{
+    width:100%; text-align:center; font-size:12.5px; font-weight:700;
+    color:#93A2BD; margin-bottom:2px; letter-spacing:.5px;
+  }
+
+  .swatch{
+    width:34px; height:34px; border-radius:11px; border:none; cursor:pointer; padding:0;
+    box-shadow:0 0 0 2px #E3EAF5, 0 4px 0 rgba(0,0,0,.10);
+    transition:transform .14s, box-shadow .14s;
+  }
+  .swatch:hover{ transform:translateY(-3px) scale(1.06); }
+  .swatch.selected{
+    transform:scale(1.18) rotate(-6deg);
+    box-shadow:0 0 0 3px #4C9BFF, 0 6px 0 rgba(0,0,0,.13);
+    z-index:2;
+  }
+  .swatch.eraser{
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; background:#fff;
+  }
+  @media (max-width:430px){
+    .swatch{ width:30px; height:30px; border-radius:10px; }
+    .swatch.eraser{ font-size:16px; }
+    .palette{ gap:7px; padding:10px 10px 14px; }
+  }
+
+  /* ---------- 二进制提示条 ---------- */
+  .binary-hint{
+    width:100%;
+    padding:15px 18px;
+    background:rgba(255,255,255,.85);
+    border:3px solid #fff;
+    border-radius:22px;
+    box-shadow:0 8px 0 rgba(190,210,240,.4), 0 14px 28px rgba(120,150,200,.14);
+    text-align:center;
+    font-size:14px; font-weight:800; color:#7A8AA8;
+    line-height:1.8;
+  }
+  .binary-hint b{
+    display:inline-block; min-width:24px; padding:1px 7px; margin:0 2px;
+    border-radius:7px; background:#3F4B63; color:#fff;
+    font-family:"SF Mono",Consolas,monospace;
+  }
+  .binary-hint b.zero{
+    background:#fff; color:#A0AEC4;
+    box-shadow:inset 0 0 0 2px #DFE6F0;
+  }
+
+  /* ---------- 提示条 ---------- */
+  .toast{
+    position:fixed; left:50%; bottom:30px;
+    transform:translate(-50%,20px);
+    background:rgba(60,72,100,.93); color:#fff;
+    padding:12px 24px; border-radius:999px;
+    font-size:15px; font-weight:700;
+    opacity:0; pointer-events:none; z-index:99;
+    transition:opacity .25s, transform .25s;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  [hidden]{ display:none !important; }
+</style>
+</head>
+<body>
+
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div class="blob b4"></div>
+
+  <h1 class="title">🎨 像素小画家 ✨</h1>
+  <p class="subtitle" id="subtitle">选一个画板大小，开始你的像素创作吧！</p>
+
+  <!-- 开始界面 -->
+  <section class="card" id="startScreen">
+    <h2>👇 选一个画板大小吧</h2>
+    <div class="size-list" id="sizeList"></div>
+
+    <div class="divider"><span>或者试试黑白像素图</span></div>
+    <div class="pattern-list" id="patternList"></div>
+  </section>
+
+  <!-- 游戏界面 -->
+  <section class="game" id="gameScreen" hidden>
+    <div class="topbar">
+      <button class="btn ghost" id="backBtn">⬅ 换画板</button>
+      <div class="badge" id="sizeBadge">8 × 8</div>
+      <button class="btn ghost" id="undoBtn" disabled>↩ 撤销</button>
+      <button class="btn ghost" id="resetBtn" hidden>重置图案</button>
+      <button class="btn ghost" id="clearBtn">🧽 清空</button>
+      <button class="btn primary" id="saveBtn">💾 保存图片</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="palette" id="palette"></div>
+    <div class="binary-hint" id="binaryHint" hidden>
+      💡 点击数字 <b>1</b> 涂成黑色像素，拖动可连续涂色；数字 <b class="zero">0</b> 不会变化
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  /* ==================== 配置 ==================== */
+  const SIZES = [8, 10, 12, 16, 20, 24, 32, 48, 64];
+
+  const COLORS = [
+    // 红色系
+    '#FF5E5E','#FF3B3B','#E63946','#C0392B','#FF8A8A','#FFB3B3',
+    // 粉色系
+    '#FF6B9D','#FF9FF3','#F368E0','#E84393','#FD79A8','#FFC9E5',
+    // 橙黄系
+    '#FF8A3D','#FF9F43','#FFB84D','#E67E22','#FFD93D','#FFF176','#FFEAA7','#FFF9C4',
+    // 绿色系
+    '#A8E063','#7BED9F','#2ECC71','#27AE60','#1DD1A1','#00B894','#B8E994','#55EFC4',
+    // 蓝色系
+    '#48DBFB','#74B9FF','#4A9EFF','#0984E3','#00CEC9','#A7CDFF','#6C5CE7',
+    // 紫色系
+    '#A55EEA','#8E44AD','#B39DDB','#D0BFFF',
+    // 棕色 / 肤色
+    '#8B5E3C','#A0522D','#D2B48C','#CD853F','#FFDBAC','#F1C27D',
+    // 灰白黑
+    '#FFFFFF','#F1F2F6','#C7CFD9','#8395A7','#576574','#4B4B6B','#2D3436','#000000'
+  ];
+
+  const BINARY_SIZE = 13;
+
+  /* ---------- 13×13 二进制图案 ---------- */
+  // 爱心
+  const HEART = [
+    [0,0,1,1,0,0,0,0,0,1,1,0,0],
+    [0,1,1,1,1,0,0,0,1,1,1,1,0],
+    [1,1,1,1,1,1,0,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,0,1,1,1,1,1,1,1,0,0,0],
+    [0,0,0,0,1,1,1,1,1,0,0,0,0],
+    [0,0,0,0,0,1,1,1,0,0,0,0,0],
+    [0,0,0,0,0,0,1,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ].flat();
+
+  // 笑脸（优化版：轮廓连贯、圆润，眼睛和微笑完整）
+  const SMILE = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,1,1,1,1,1,0,0,0,0],
+    [0,0,1,1,0,0,0,0,0,1,1,0,0],
+    [0,1,1,0,0,0,0,0,0,0,1,1,0],
+    [0,1,0,0,1,0,0,0,1,0,0,1,0],
+    [1,1,0,0,1,0,0,0,1,0,0,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,1,0,0,1,0,0,0,1],
+    [0,1,1,0,0,1,1,1,1,0,0,1,0],
+    [0,1,1,0,0,0,0,0,0,0,1,1,0],
+    [0,0,1,1,0,0,0,0,0,1,1,0,0],
+    [0,0,0,0,1,1,1,1,1,0,0,0,0]
+  ].flat();
+
+  // 水杯（带把手）
+  const CUP = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,1,0,0,0,0,0,0,0,0,1,0,0],
+    [0,1,0,0,0,0,0,0,0,0,1,1,1],
+    [0,1,0,0,0,0,0,0,0,0,1,0,1],
+    [0,1,0,0,0,0,0,0,0,0,1,0,1],
+    [0,1,0,0,0,0,0,0,0,0,1,1,1],
+    [0,1,0,0,0,0,0,0,0,0,1,0,0],
+    [0,1,0,0,0,0,0,0,0,0,1,0,0],
+    [0,1,0,0,0,0,0,0,0,0,1,0,0],
+    [0,1,0,0,0,0,0,0,0,0,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ].flat();
+
+  const PATTERNS = {
+    heart: { name:'爱心', emoji:'❤', data: HEART },
+    smile: { name:'笑脸', emoji:'😊', data: SMILE },
+    cup:   { name:'水杯', emoji:'🥤', data: CUP }
+  };
+
+  /* ==================== 元素 ==================== */
+  const $ = id => document.getElementById(id);
+  const startScreen  = $('startScreen');
+  const gameScreen   = $('gameScreen');
+  const sizeList     = $('sizeList');
+  const patternList  = $('patternList');
+  const board        = $('board');
+  const palette      = $('palette');
+  const binaryHint   = $('binaryHint');
+  const sizeBadge    = $('sizeBadge');
+  const undoBtn      = $('undoBtn');
+  const clearBtn     = $('clearBtn');
+  const resetBtn     = $('resetBtn');
+  const saveBtn      = $('saveBtn');
+  const backBtn      = $('backBtn');
+  const subtitle     = $('subtitle');
+  const toastEl      = $('toast');
+
+  /* ==================== 状态 ==================== */
+  let mode = 'color';          // 'color' | 'binary'
+  let patternKey = 'heart';    // 当前二进制图案
+  let size = 8;
+  let cells = [];              // 彩色：颜色字符串 / ''；二进制：0 / 1
+  let painted = [];            // 二进制专用：true 表示已涂黑
+  let history = [];
+  let drawing = false;
+  let erasing = false;
+  let currentColor = null;
+
+  let lastIdx = null;
+  let strokeSnapshot = null;
+  let geom = null;
+
+  /* ==================== 开始界面 ==================== */
+  // 彩色尺寸按钮
+  SIZES.forEach(function(n){
+    const btn = document.createElement('button');
+    btn.className = 'size-btn';
+    const step = Math.max(2, 40 / n).toFixed(2);
+    btn.innerHTML =
+      '<span class="mini" style="background-size:' + step + 'px ' + step + 'px"></span>' +
+      '<span>' + n + ' × ' + n + '</span>';
+    btn.addEventListener('click', function(){ startGame(n); });
+    sizeList.appendChild(btn);
+  });
+
+  // 黑白图案卡片
+  Object.keys(PATTERNS).forEach(function(key){
+    const p = PATTERNS[key];
+    const btn = document.createElement('button');
+    btn.className = 'pattern-card';
+    btn.type = 'button';
+    btn.innerHTML =
+      '<span class="pattern-preview"></span>' +
+      '<strong>' + p.emoji + ' ' + p.name + '</strong>' +
+      '<small>13 × 13 二进制</small>';
+
+    const prev = btn.querySelector('.pattern-preview');
+    prev.style.gridTemplateColumns = 'repeat(13, 1fr)';
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < p.data.length; i++){
+      const d = document.createElement('i');
+      if (p.data[i]) d.className = 'on';
+      frag.appendChild(d);
+    }
+    prev.appendChild(frag);
+
+    btn.addEventListener('click', function(){ startBinary(key); });
+    patternList.appendChild(btn);
+  });
+
+  /* ==================== 调色盘 ==================== */
+  function buildPalette(){
+    palette.innerHTML = '';
+
+    const tip = document.createElement('div');
+    tip.className = 'palette-tip';
+    tip.textContent = '点一下选颜色，再点一下取消选择 ✨';
+    palette.appendChild(tip);
+
+    COLORS.forEach(function(c){
+      const b = document.createElement('button');
+      b.className = 'swatch';
+      b.style.background = c;
+      b.dataset.color = c;
+      b.title = c;
+      b.addEventListener('click', function(){
+        if (!erasing && currentColor === c){
+          currentColor = null;
+        } else {
+          currentColor = c;
+          erasing = false;
+        }
+        updateSelection();
+      });
+      palette.appendChild(b);
+    });
+
+    const er = document.createElement('button');
+    er.className = 'swatch eraser';
+    er.dataset.eraser = '1';
+    er.textContent = '🧽';
+    er.title = '橡皮擦（再点一次取消）';
+    er.addEventListener('click', function(){
+      erasing = !erasing;
+      updateSelection();
+    });
+    palette.appendChild(er);
+
+    updateSelection();
+  }
+
+  function updateSelection(){
+    Array.prototype.forEach.call(palette.querySelectorAll('.swatch'), function(el){
+      const on = el.dataset.eraser
+        ? erasing
+        : (!erasing && currentColor !== null && el.dataset.color === currentColor);
+      el.classList.toggle('selected', on);
+    });
+  }
+
+  /* ==================== 画板 ==================== */
+  function buildBoard(){
+    board.classList.toggle('binary', mode === 'binary');
+    const dense = mode === 'color' && size > 32;
+    board.classList.toggle('dense', dense);
+
+    board.style.gap = mode === 'binary' ? '' : (dense ? '0px' : '1px');
+    board.style.gridTemplateColumns = 'repeat(' + size + ', 1fr)';
+    board.innerHTML = '';
+
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < size * size; i++){
+      const d = document.createElement('div');
+      d.className = 'cell';
+      d.dataset.i = i;
+      if (mode === 'binary'){
+        d.textContent = cells[i] ? '1' : '0';
+        if (cells[i]) d.classList.add('one');
+        if (painted[i]) d.classList.add('painted');
+      }
+      frag.appendChild(d);
+    }
+    board.appendChild(frag);
+  }
+
+  function render(){
+    const kids = board.children;
+    for (let i = 0; i < cells.length; i++){
+      const el = kids[i];
+      if (!el) continue;
+      if (mode === 'binary'){
+        const v = cells[i] ? 1 : 0;
+        el.textContent = v ? '1' : '0';
+        el.classList.toggle('one', v === 1);
+        el.classList.toggle('painted', !!painted[i]);
+      } else {
+        el.style.background = cells[i] || '';
+      }
+    }
+  }
+
+  /* ==================== 几何与命中 ==================== */
+  function computeGeom(){
+    const rect = board.getBoundingClientRect();
+    const cs = getComputedStyle(board);
+    const border = parseFloat(cs.borderLeftWidth) || 0;
+    const padding = parseFloat(cs.paddingLeft) || 0;
+    const gap = parseFloat(cs.gap) || 0;
+    const inner = rect.width - border * 2 - padding * 2;
+    const cellSize = (inner - gap * (size - 1)) / size;
+    geom = {
+      left: rect.left + border + padding,
+      top: rect.top + border + padding,
+      step: cellSize + gap
+    };
+  }
+
+  function pointToIndex(clientX, clientY){
+    if (!geom) return null;
+    const x = clientX - geom.left;
+    const y = clientY - geom.top;
+    if (x < 0 || y < 0) return null;
+    const col = Math.floor(x / geom.step);
+    const row = Math.floor(y / geom.step);
+    if (col < 0 || col >= size || row < 0 || row >= size) return null;
+    return row * size + col;
+  }
+
+  /* ==================== 绘制 ==================== */
+  function paintCellByIndex(i){
+    // 二进制模式：只有数字 1 且未涂黑的格子可以被涂黑
+    if (mode === 'binary'){
+      if (painted[i]) return;
+      if (cells[i] !== 1) return;
+      painted[i] = true;
+      const el = board.children[i];
+      if (el) el.classList.add('painted');
+      return;
+    }
+
+    // 彩色模式
+    if (!erasing && currentColor === null) return;
+    const v = erasing ? '' : currentColor;
+    if (cells[i] === v) return;
+    cells[i] = v;
+    const el = board.children[i];
+    if (el) el.style.background = v;
+  }
+
+  function lineCells(a, b){
+    const x0 = a % size, y0 = Math.floor(a / size);
+    const x1 = b % size, y1 = Math.floor(b / size);
+    const out = [];
+    let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+    let sx = x0 < x1 ? 1 : -1;
+    let sy = y0 < y1 ? 1 : -1;
+    let err = dx - dy;
+    let x = x0, y = y0;
+    while (true){
+      out.push(y * size + x);
+      if (x === x1 && y === y1) break;
+      const e2 = 2 * err;
+      if (e2 > -dy){ err -= dy; x += sx; }
+      if (e2 < dx){ err += dx; y += sy; }
+    }
+    return out;
+  }
+
+  /* ==================== 历史记录 ==================== */
+  function pushSnapshot(snap){
+    history.push(snap);
+    if (history.length > 40) history.shift();
+    undoBtn.disabled = false;
+  }
+
+  function endStroke(){
+    if (!drawing) return;
+    drawing = false;
+    lastIdx = null;
+
+    if (strokeSnapshot){
+      const snap = strokeSnapshot;
+      strokeSnapshot = null;
+      let changed = false;
+
+      if (mode === 'binary'){
+        const sc = snap.cells, sp = snap.painted;
+        for (let i = 0; i < sc.length; i++){
+          if (sc[i] !== cells[i] || sp[i] !== painted[i]){ changed = true; break; }
+        }
+      } else {
+        for (let i = 0; i < snap.length; i++){
+          if (snap[i] !== cells[i]){ changed = true; break; }
+        }
+      }
+
+      if (changed) pushSnapshot(snap);
+    }
+  }
+
+  /* ==================== 进入彩色模式 ==================== */
+  function startGame(n){
+    mode = 'color';
+    size = n;
+    cells = new Array(n * n).fill('');
+    painted = [];
+    history = [];
+    erasing = false;
+    currentColor = null;
+    undoBtn.disabled = true;
+    lastIdx = null;
+    strokeSnapshot = null;
+    geom = null;
+
+    sizeBadge.textContent = n + ' × ' + n;
+    sizeBadge.classList.remove('dark');
+
+    buildBoard();
+    buildPalette();
+
+    palette.hidden = false;
+    binaryHint.hidden = true;
+    resetBtn.hidden = true;
+
+    startScreen.hidden = true;
+    gameScreen.hidden = false;
+    subtitle.textContent = '先选个颜色，点一点、拖一拖，画出你的像素世界！🌈';
+    window.scrollTo(0, 0);
+  }
+
+  /* ==================== 进入黑白二进制模式 ==================== */
+  function startBinary(key){
+    const p = PATTERNS[key] || PATTERNS.heart;
+    patternKey = PATTERNS[key] ? key : 'heart';
+
+    mode = 'binary';
+    size = BINARY_SIZE;
+    cells = p.data.slice();
+    painted = new Array(size * size).fill(false);
+    history = [];
+    erasing = false;
+    currentColor = null;
+    undoBtn.disabled = true;
+    lastIdx = null;
+    strokeSnapshot = null;
+    geom = null;
+
+    sizeBadge.textContent = '13 × 13 · ' + p.name;
+    sizeBadge.classList.add('dark');
+
+    resetBtn.textContent = p.emoji + ' 重置' + p.name;
+
+    buildBoard();
+
+    palette.hidden = true;
+    binaryHint.hidden = false;
+    resetBtn.hidden = false;
+
+    startScreen.hidden = true;
+    gameScreen.hidden = false;
+    subtitle.textContent = '点击数字 1 把它涂成黑色像素，完成你的' + p.name + '吧 ' + p.emoji;
+    window.scrollTo(0, 0);
+  }
+
+  /* ==================== 顶部按钮 ==================== */
+  backBtn.addEventListener('click', function(){
+    gameScreen.hidden = true;
+    startScreen.hidden = false;
+    subtitle.textContent = '选一个画板大小，开始你的像素创作吧！';
+    window.scrollTo(0, 0);
+  });
+
+  undoBtn.addEventListener('click', function(){
+    if (!history.length) return;
+
+    if (mode === 'binary'){
+      const snap = history.pop();
+      cells = snap.cells.slice();
+      painted = snap.painted.slice();
+      render();
+    } else {
+      cells = history.pop();
+      render();
+    }
+    undoBtn.disabled = history.length === 0;
+  });
+
+  resetBtn.addEventListener('click', function(){
+    if (mode !== 'binary') return;
+
+    const base = PATTERNS[patternKey].data;
+    let same = true;
+    for (let i = 0; i < cells.length; i++){
+      if (cells[i] !== base[i] || painted[i]){ same = false; break; }
+    }
+    if (same) return;
+
+    pushSnapshot({ cells: cells.slice(), painted: painted.slice() });
+    cells = base.slice();
+    painted = new Array(size * size).fill(false);
+    render();
+    showToast(PATTERNS[patternKey].name + '回来啦 ' + PATTERNS[patternKey].emoji);
+  });
+
+  clearBtn.addEventListener('click', function(){
+    if (mode === 'binary'){
+      let hasSomething = false;
+      for (let i = 0; i < cells.length; i++){
+        if (cells[i] !== 0 || painted[i]){ hasSomething = true; break; }
+      }
+      if (!hasSomething) return;
+
+      pushSnapshot({ cells: cells.slice(), painted: painted.slice() });
+      cells = new Array(size * size).fill(0);
+      painted = new Array(size * size).fill(false);
+      render();
+      showToast('变成空白二进制画板啦 🧽');
+      return;
+    }
+
+    if (cells.every(function(c){ return c === ''; })) return;
+    pushSnapshot(cells.slice());
+    cells = new Array(size * size).fill('');
+    render();
+    showToast('画板擦干净啦 🧽');
+  });
+
+  saveBtn.addEventListener('click', function(){
+    // 二进制模式：根据 painted 导出黑白像素图
+    if (mode === 'binary'){
+      const p = PATTERNS[patternKey];
+      const scale = 30;
+      const cvs = document.createElement('canvas');
+      cvs.width  = size * scale;
+      cvs.height = size * scale;
+      const ctx = cvs.getContext('2d');
+
+      for (let i = 0; i < cells.length; i++){
+        const x = (i % size) * scale;
+        const y = Math.floor(i / size) * scale;
+        ctx.fillStyle = painted[i] ? '#000000' : '#FFFFFF';
+        ctx.fillRect(x, y, scale, scale);
+      }
+
+      const a = document.createElement('a');
+      a.download = '黑白像素' + p.name + '-13x13.png';
+      a.href = cvs.toDataURL('image/png');
+      a.click();
+
+      showToast('黑白像素' + p.name + '保存好啦 ' + p.emoji);
+      return;
+    }
+
+    // 彩色模式
+    const scale = size > 32 ? 16 : 24;
+    const cvs = document.createElement('canvas');
+    cvs.width  = size * scale;
+    cvs.height = size * scale;
+    const ctx = cvs.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+    for (let i = 0; i < cells.length; i++){
+      if (!cells[i]) continue;
+      const x = (i % size) * scale;
+      const y = Math.floor(i / size) * scale;
+      ctx.fillStyle = cells[i];
+      ctx.fillRect(x, y, scale, scale);
+    }
+
+    const a = document.createElement('a');
+    a.download = '像素画-' + size + 'x' + size + '.png';
+    a.href = cvs.toDataURL('image/png');
+    a.click();
+
+    showToast('保存成功啦 🎉');
+  });
+
+  /* ==================== 画笔（鼠标 + 触摸） ==================== */
+  board.addEventListener('pointerdown', function(e){
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+
+    // 二进制模式
+    if (mode === 'binary'){
+      computeGeom();
+      const i = pointToIndex(e.clientX, e.clientY);
+      if (i === null) return;
+      // 只有数字 1 的格子才有必要开始一笔
+      if (painted[i] || cells[i] !== 1) return;
+
+      drawing = true;
+      strokeSnapshot = { cells: cells.slice(), painted: painted.slice() };
+      lastIdx = i;
+      paintCellByIndex(i);
+      return;
+    }
+
+    // 彩色模式
+    if (!erasing && currentColor === null){
+      showToast('先选一个颜色吧 🎨');
+      return;
+    }
+
+    computeGeom();
+    const i = pointToIndex(e.clientX, e.clientY);
+    if (i === null) return;
+
+    drawing = true;
+    strokeSnapshot = cells.slice();
+    lastIdx = i;
+    paintCellByIndex(i);
+  });
+
+  window.addEventListener('pointermove', function(e){
+    if (!drawing) return;
+
+    const i = pointToIndex(e.clientX, e.clientY);
+    if (i === null){
+      lastIdx = null;
+      return;
+    }
+    if (lastIdx === null){
+      lastIdx = i;
+      paintCellByIndex(i);
+      return;
+    }
+    if (i === lastIdx) return;
+
+    const path = lineCells(lastIdx, i);
+    for (let k = 0; k < path.length; k++) paintCellByIndex(path[k]);
+    lastIdx = i;
+  });
+
+  window.addEventListener('pointerup', endStroke);
+  window.addEventListener('pointercancel', endStroke);
+
+  board.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive:false });
+  board.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  /* ==================== 小提示 ==================== */
+  let toastTimer = null;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 1700);
+  }
+
+  /* ==================== 初始化 ==================== */
+  buildPalette();
+})();
+</script>
+</body>
+</html>
